@@ -20,6 +20,10 @@ import {
 } from "./concurrency-redis";
 import { autumnService } from "../services/autumn/autumn.service";
 import { orgIdForTeam } from "./team-org";
+import {
+  getGatewayConcurrencyLimit,
+  withGatewayFloor,
+} from "./gateway-concurrency";
 import { reportPipelineError } from "./redis-pipeline";
 
 // Fallback when Autumn can't give us a concurrency value.
@@ -30,6 +34,10 @@ const DEFAULT_CONCURRENCY_LIMIT = 2;
  * balance. Autumn is authoritative; when the entity is missing we fall back to
  * the low default of 2. When Autumn errors, getConcurrencyLimit already returns
  * a high fail-open value, so that carries through here.
+ *
+ * A Gateway-provisioned end-user team is the one exception: it sits on the
+ * free plan but a partner pays for it, so its funding partner's figure
+ * (lib/gateway-concurrency.ts) raises the limit when that is higher.
  */
 export async function getEffectiveConcurrencyLimit(
   teamId: string,
@@ -38,8 +46,14 @@ export async function getEffectiveConcurrencyLimit(
    * null only when the team genuinely has no org. */
   orgId: string | null,
 ): Promise<number> {
-  const autumnValue = await autumnService.getConcurrencyLimit(teamId, orgId);
-  return autumnValue ?? DEFAULT_CONCURRENCY_LIMIT;
+  const [autumnValue, gatewayValue] = await Promise.all([
+    autumnService.getConcurrencyLimit(teamId, orgId),
+    getGatewayConcurrencyLimit(teamId),
+  ]);
+  return withGatewayFloor(
+    autumnValue ?? DEFAULT_CONCURRENCY_LIMIT,
+    gatewayValue,
+  );
 }
 
 const constructKey = constructConcurrencyLimitKey;

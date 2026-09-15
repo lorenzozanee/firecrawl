@@ -704,6 +704,28 @@ export const partner_provisioned_accounts = pgTable(
   },
 );
 
+// Partner API integrations, owned by firecrawl-integrations. Only the Gateway
+// funding link the API reads (lib/gateway-concurrency.ts): partner_org_id is
+// the organization that pays for the integration's provisioned accounts and
+// gateway_enabled is that partner's funding kill switch.
+export const user_referring_integration = pgTable(
+  "user_referring_integration",
+  {
+    id: bigintNum("id").notNull(),
+    slug: varchar("slug").notNull(),
+    partner_org_id: uuid("partner_org_id"),
+    gateway_enabled: boolean("gateway_enabled").notNull().default(false),
+  },
+);
+
+// Organizations. The caller's own org rides the auth chunk (org_id + flags);
+// this definition exists for reading ANOTHER org's flags, today the funding
+// partner's signedContract in lib/gateway-concurrency.ts.
+export const organizations = pgTable("organizations", {
+  id: uuid("id").notNull().defaultRandom(),
+  flags: jsonb("flags").notNull().default({}),
+});
+
 export const teams = pgTable("teams", {
   id: uuid("id").notNull().defaultRandom(),
   created_at: ts("created_at").defaultNow(),

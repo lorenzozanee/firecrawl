@@ -553,6 +553,23 @@ const configSchema = z.object({
   // 0 (the default) is also the kill switch: the allowlist still routes, and
   // nothing else does.
   FIREBILL_ROLLOUT_PERCENT: z.coerce.number().min(0).max(100).default(0),
+  // Concurrent-browser floor for Gateway-provisioned end-user teams
+  // ("ghosts"). A ghost sits on the free plan (2 browsers) but a partner pays
+  // for it, so lib/gateway-concurrency.ts raises it to the partner's figure:
+  // CONTRACTED when the funding partner's org carries flags.signedContract
+  // (signed paper on file), SELF_SERVE otherwise. Numbers from the
+  // 2026-09-15 decision in #team-distribution-partnerships; SELF_SERVE exists
+  // to curb abuse through self-serve partners.
+  GATEWAY_GHOST_CONCURRENCY_CONTRACTED: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .default(100),
+  GATEWAY_GHOST_CONCURRENCY_SELF_SERVE: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .default(5),
 
   // Miscellaneous
   IDMUX_URL: z.string().optional(),
